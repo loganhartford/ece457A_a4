@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import time
 from multiprocessing import Pool
 
-terminals = [f"x{i}" for i in range(16)]  # x0, x1, ..., x15
+terminals = [f"x{i}" for i in range(16)]
 
 def AND(x, y):
     return x and y
@@ -17,19 +17,38 @@ def NOT(x):
 def IF(cond, x, y):
     return x if cond else y
 
-def ADD(x, y):
-    return x + y
+def SUM(*args):
+    return sum(args)
 
-functions = {"AND": AND, "OR": OR, "NOT": NOT, "IF": IF, "ADD": ADD}
+def GT(x, y):
+    return x > y
+
+def LT(x, y):
+    return x < y
+
+functions = {
+    "AND": AND,
+    "OR": OR,
+    "NOT": NOT,
+    "IF": IF,
+    "SUM": SUM,
+    "GT": GT,
+    "LT": LT,
+}
 
 class Node:
     def __init__(self, value, children=None):
         self.value = value
-        self.children = children if children else []
+        if children:
+            self.children = children
+        else:
+            self.children = []
 
     def evaluate(self, inputs):
+        # If node is a terminal, return its value
         if self.value in terminals:
             return inputs[self.value]
+        # If node is a function, evaluate children recursively
         elif self.value in functions:
             func = functions[self.value]
             args = [child.evaluate(inputs) for child in self.children]
@@ -56,7 +75,7 @@ def fitness(args):
             if program.evaluate(inputs) == expected:
                 correct += 1
         except Exception:
-            pass  # Handle any evaluation errors
+            pass
     return correct / len(test_cases)
 
 def crossover(parent1, parent2):
@@ -83,11 +102,11 @@ def mutate(node, max_depth):
 
 def generate_test_cases():
     test_cases = []
-    for i in range(2**16):  # Iterate over all 16-bit binary numbers
-        binary = [int(bit) for bit in f"{i:016b}"]  # Convert number to binary list
-        inputs = {f"x{j}": binary[j] for j in range(16)}  # Map inputs x0, x1, ..., x15
-        total = sum(binary)
-        expected = 1 if 7 <= total <= 9 else 0  # Apply 16-middle-3 logic
+    for i in range(2**16):
+        binary = bin(i)[2:].zfill(16)
+        inputs = {f"x{j}": int(binary[j]) for j in range(16)}
+        bit_sum = sum(inputs[f"x{k}"] for k in range(16))
+        expected = 1 if 7 <= bit_sum <= 9 else 0
         test_cases.append((inputs, expected))
     return test_cases
 
@@ -104,12 +123,16 @@ def genetic_programming(pop_size, generations, max_depth, subset_ratio):
             else:
                 subset_test_cases = random.sample(test_cases, subset_size)
 
+            # Prepare arguments for parallel fitness evaluation
             fitness_args = [(individual, subset_test_cases) for individual in population]
+
+            # Evaluate fitness in parallel
             fitness_values = pool.map(fitness, fitness_args)
             population_fitness = list(zip(population, fitness_values))
             population_fitness.sort(key=lambda pf: -pf[1])
             population = [pf[0] for pf in population_fitness]
 
+            # Record best fitness for this generation
             best_fitness = fitness((population[0], test_cases))
             fitness_progress.append(best_fitness)
 
@@ -117,6 +140,7 @@ def genetic_programming(pop_size, generations, max_depth, subset_ratio):
                 fitness_progress.extend([1.0] * (generations - generation - 1))
                 break
 
+            # Create a new population
             new_population = population[:int(0.2 * pop_size)]
             while len(new_population) < pop_size:
                 if random.random() < 0.7:
@@ -142,18 +166,11 @@ def plot_fitness_progress(fitness_progress):
     plt.show()
 
 if __name__ == "__main__":
-    pop_size = 300
-    generations = 100
-    max_depth = 30
-    subset_ratio = 0.1
-
     start = time.time()
-    best_program, best_fitness, fitness_progress = genetic_programming(
-        pop_size, generations, max_depth, subset_ratio
-    )
-    end = time.time()
+    best_program, best_fitness, fitness_progress = genetic_programming(pop_size=100, generations=300, max_depth=20, subset_ratio=0.1)
 
-    print(f"Best fitness: {best_fitness * 100:.2f}%")
+    end = time.time()
+    print(f"Best fitness: {int(65536 * best_fitness)}/65536")
     print("Best program:", best_program)
     print(f"Time taken: {round(end - start, 2)}s")
     plot_fitness_progress(fitness_progress)

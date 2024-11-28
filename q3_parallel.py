@@ -5,7 +5,6 @@ from multiprocessing import Pool
 
 terminals = ["a0", "a1", "a2", "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7"]
 
-# Replace lambdas with named functions
 def AND(x, y):
     return x and y
 
@@ -64,7 +63,7 @@ def fitness(args):
             if program.evaluate(inputs) == expected:
                 correct += 1
         except Exception:
-            pass  # Handle any evaluation errors
+            pass
     return correct / len(test_cases)
 
 def crossover(parent1, parent2):
@@ -130,11 +129,7 @@ def genetic_programming(pop_size, generations, max_depth, subset_ratio):
 
             # Evaluate fitness in parallel
             fitness_values = pool.map(fitness, fitness_args)
-
-            # Pair individuals with their fitness
             population_fitness = list(zip(population, fitness_values))
-
-            # Sort population by fitness
             population_fitness.sort(key=lambda pf: -pf[1])
             population = [pf[0] for pf in population_fitness]
 
@@ -159,7 +154,6 @@ def genetic_programming(pop_size, generations, max_depth, subset_ratio):
                     new_population.append(mutate(random.choice(population), max_depth))
             population = new_population
 
-        # Re-evaluate the best individual on the full test set
         best_program = population[0]
         best_fitness = fitness((best_program, test_cases))
 
@@ -175,7 +169,7 @@ def plot_fitness_progress(fitness_progress):
 if __name__ == "__main__":
     start = time.time()
     best_program, best_fitness, fitness_progress = genetic_programming(
-        pop_size=300, generations=300, max_depth=30, subset_ratio=1
+        pop_size=100, generations=10000, max_depth=20, subset_ratio=1
     )
     end = time.time()
     print(f"Best fitness: {int(2048 * best_fitness)}/2048")
